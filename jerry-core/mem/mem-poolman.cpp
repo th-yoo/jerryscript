@@ -56,10 +56,12 @@ mem_pool_state_t *mem_pools;
 /**
  * Number of free chunks
  */
+#if 0
 size_t mem_free_chunks_number;
+#endif
 
 /**
- * Pointer to a free pool chunk, if there is any
+ * List of free pool chunks
  */
 mem_pool_chunk_t *mem_free_chunk_p;
 
@@ -96,7 +98,9 @@ static void mem_pools_stat_free_chunk (void);
 void
 mem_pools_init (void)
 {
+#if 0
   mem_free_chunks_number = 0;
+#endif
   mem_free_chunk_p = NULL;
 
   MEM_POOLS_STAT_INIT ();
@@ -110,7 +114,9 @@ mem_pools_finalize (void)
 {
   mem_pools_remove_empty_pools ();
 
+#if 0
   JERRY_ASSERT (mem_free_chunks_number == 0);
+#endif
 } /* mem_pools_finalize */
 
 void
@@ -119,36 +125,17 @@ mem_pools_remove_empty_pools (void)
   /*
    * At first pass collect pointers to those of free chunks that are first at their pools
    * to separate list and change layout of the chunks to the following:
-   *   {
-   *     mem_cpointer_t next_first_pool_free_chunk_cp; // compressed pointer to first
-   *                                                   // free chunk of a next pool
-   *     uint16_t free_chunks_num; // number of free chunks in the pool;
-   *     uint32_t hint_magic_num; // 0x7e89a1e7
-   *   }
-   *
-   * Initialize free_chunks_num to 0.
    */
 
   const uint16_t hint_magic_num_value = 0x7e89;
 
-  typedef struct
-  {
-    mem_cpointer_t next_first_pool_free_chunk_cp;
-    mem_cpointer_t free_chunks_of_the_pool_cp;
-    uint16_t hint_magic_num;
-    mem_pool_chunk_index_t free_chunks_num;
-    uint8_t id;
-  } mem_temp_first_chunk_layout_t;
-
-  JERRY_STATIC_ASSERT (sizeof (mem_temp_first_chunk_layout_t) <= MEM_POOL_CHUNK_SIZE);
-
-  constexpr uint32_t number_of_list_of_pools_with_free_first_chunk = 8;
-
-  mem_temp_first_chunk_layout_t *first_chunk_of_a_pool_list_p[number_of_list_of_pools_with_free_first_chunk];
-  for (uint32_t i = 0; i < number_of_list_of_pools_with_free_first_chunk; i++)
+  constexpr uint32_t number_of_pool_lists = 8;
+  mem_pool_chunk_t *first_chunk_of_a_pool_list_p[number_of_pool_lists];
+  for (uint32_t i = 0; i < number_of_pool_lists; i++)
   {
     first_chunk_of_a_pool_list_p[i] = NULL;
   }
+
   uint32_t number_of_pools_with_free_first_chunk = 0;
 
   for (mem_pool_chunk_t *free_chunk_iter_p = mem_free_chunk_p, *prev_free_chunk_p = NULL, *next_free_chunk_p;
@@ -159,7 +146,7 @@ mem_pools_remove_empty_pools (void)
 
     VALGRIND_DEFINED_SPACE (free_chunk_iter_p, MEM_POOL_CHUNK_SIZE);
 
-    next_free_chunk_p = *(mem_pool_chunk_t **) free_chunk_iter_p;
+    next_free_chunk_p = free_chunk_iter_p->u.free.next_p;
                           
     if ((mem_pool_chunk_t *) MEM_POOL_SPACE_START (pool_p) == free_chunk_iter_p)
     {
@@ -176,21 +163,20 @@ mem_pools_remove_empty_pools (void)
       }
       else
       {
-        *(mem_pool_chunk_t **) prev_free_chunk_p = next_free_chunk_p;
+        prev_free_chunk_p->u.free.next_p = next_free_chunk_p;
       }
 
-      mem_temp_first_chunk_layout_t *new_layout_p = (mem_temp_first_chunk_layout_t *) free_chunk_iter_p;
-
-      uint8_t id = number_of_pools_with_free_first_chunk % number_of_list_of_pools_with_free_first_chunk;
       number_of_pools_with_free_first_chunk++;
 
-      MEM_CP_SET_POINTER (new_layout_p->next_first_pool_free_chunk_cp, first_chunk_of_a_pool_list_p[id]);
-      new_layout_p->free_chunks_of_the_pool_cp = MEM_CP_NULL;
-      new_layout_p->free_chunks_num = 1; /* 1 - first chunk */
-      new_layout_p->hint_magic_num = hint_magic_num_value;
-      new_layout_p->id = id;
+      uint8_t id = number_of_pools_with_free_first_chunk % number_of_pool_lists;
 
-      first_chunk_of_a_pool_list_p[id] = new_layout_p;
+      MEM_CP_SET_POINTER (free_chunk_iter_p->u.u_pool_gc.stage1.next_first_cp, first_chunk_of_a_pool_list_p[id]);
+      free_chunk_iter_p->u.u_pool_gc.stage1.free_list_cp = MEM_CP_NULL;
+      free_chunk_iter_p->u.u_pool_gc.stage1.free_chunks_num = 1; /* 1 (first chunk) */
+      free_chunk_iter_p->u.u_pool_gc.stage1.hint_magic_num = hint_magic_num_value;
+      free_chunk_iter_p->u.u_pool_gc.stage1.id = id;
+
+      first_chunk_of_a_pool_list_p[id] = free_chunk_iter_p;
     }
     else
     {
@@ -209,8 +195,9 @@ mem_pools_remove_empty_pools (void)
    * At second pass we check for all rest free chunks whether their pool's first chunk could be free,
    * and so currently in temporary list of first chunks of their pools.
    *
-   * For each of the chunk contained in pool with the first pool's chunk layout similar to mem_temp_first_chunk_layout_t,
-   * find the first chunk through the list, to check that the chunk is really free.
+   * For each of the chunk contained in pool, try to find the first chunk through the list,
+   * to check that the first chunk is really free, and so, was acquired during first stage of
+   * empty pools collection.
    *
    * If the corresponding first chunk is really free, increment counter of free chunks in it, and move the checked
    * chunk to temporary local list of corresponding pool's free chunks.
@@ -221,39 +208,36 @@ mem_pools_remove_empty_pools (void)
   {
     mem_pool_state_t *pool_p = (mem_pool_state_t *) mem_heap_get_chunked_block_start (free_chunk_iter_p);
 
-    next_free_chunk_p = *(mem_pool_chunk_t **) free_chunk_iter_p;
+    next_free_chunk_p = free_chunk_iter_p->u.free.next_p;
 
     mem_pool_chunk_t *first_chunk_of_pool_p = (mem_pool_chunk_t *) MEM_POOL_SPACE_START (pool_p);
 
-    mem_temp_first_chunk_layout_t *temp_first_chunk_layout_p = (mem_temp_first_chunk_layout_t *) first_chunk_of_pool_p;
-
     bool is_chunk_moved_to_local_list = false;
 
-    if (temp_first_chunk_layout_p->hint_magic_num == hint_magic_num_value)
+    if (first_chunk_of_pool_p->u.u_pool_gc.stage1.hint_magic_num == hint_magic_num_value)
     {
       /*
-       * Probably, the first chunk is free.
+       * Maybe, the first chunk is free.
        *
        * If it is so, it is included in the list of pool's first free chunks.
        */
+      uint8_t id_to_search_in = first_chunk_of_pool_p->u.u_pool_gc.stage1.id;
 
-      uint8_t id_to_search_in = temp_first_chunk_layout_p->id;
-
-      if (id_to_search_in < number_of_list_of_pools_with_free_first_chunk)
+      if (id_to_search_in < number_of_pool_lists)
       {
-        for (mem_temp_first_chunk_layout_t *first_pool_chunks_iter_p = first_chunk_of_a_pool_list_p[id_to_search_in];
+        for (mem_pool_chunk_t *first_pool_chunks_iter_p = first_chunk_of_a_pool_list_p[id_to_search_in];
              first_pool_chunks_iter_p != NULL;
-             first_pool_chunks_iter_p = MEM_CP_GET_POINTER (mem_temp_first_chunk_layout_t,
-                                                            first_pool_chunks_iter_p->next_first_pool_free_chunk_cp))
+             first_pool_chunks_iter_p = MEM_CP_GET_POINTER (mem_pool_chunk_t,
+                                                            first_pool_chunks_iter_p->u.u_pool_gc.stage1.next_first_cp))
         {
-          if (first_pool_chunks_iter_p == temp_first_chunk_layout_p)
+          if (first_pool_chunks_iter_p == first_chunk_of_pool_p)
           {
             /*
              * The first chunk is actually free.
              *
              * So, incrementing free chunks counter in it.
              */
-            temp_first_chunk_layout_p->free_chunks_num++;
+            first_chunk_of_pool_p->u.u_pool_gc.stage1.free_chunks_num++;
 
             /*
              * It is possible that the corresponding pool is empty
@@ -268,12 +252,12 @@ mem_pools_remove_empty_pools (void)
             }
             else
             {
-              *(mem_pool_chunk_t **) prev_free_chunk_p = next_free_chunk_p;
+              prev_free_chunk_p->u.free.next_p = next_free_chunk_p;
             }
 
-            *(mem_pool_chunk_t **) free_chunk_iter_p = MEM_CP_GET_POINTER (mem_pool_chunk_t,
-                                                                           temp_first_chunk_layout_p->free_chunks_of_the_pool_cp);
-            MEM_CP_SET_NON_NULL_POINTER (temp_first_chunk_layout_p->free_chunks_of_the_pool_cp, free_chunk_iter_p);
+            free_chunk_iter_p->u.free.next_p = MEM_CP_GET_POINTER (mem_pool_chunk_t,
+                                                                   first_chunk_of_pool_p->u.u_pool_gc.stage1.free_list_cp);
+            MEM_CP_SET_NON_NULL_POINTER (first_chunk_of_pool_p->u.u_pool_gc.stage1.free_list_cp, free_chunk_iter_p);
 
             is_chunk_moved_to_local_list = true;
 
@@ -295,38 +279,40 @@ mem_pools_remove_empty_pools (void)
    * If the number is equal to number of chunks in the pool - the the pool is freed,
    * otherwise - free chunks of the pool are returned to common list of free chunks.
    */
-  for (uint32_t list_id = 0; list_id < number_of_list_of_pools_with_free_first_chunk; list_id++)
+  for (uint32_t list_id = 0; list_id < number_of_pool_lists; list_id++)
   {
-    for (mem_temp_first_chunk_layout_t *first_pool_chunks_iter_p = first_chunk_of_a_pool_list_p[list_id], *next_p;
+    for (mem_pool_chunk_t *first_pool_chunks_iter_p = first_chunk_of_a_pool_list_p[list_id], *next_p;
          first_pool_chunks_iter_p != NULL;
          first_pool_chunks_iter_p = next_p)
     {
-      next_p = MEM_CP_GET_POINTER (mem_temp_first_chunk_layout_t,
-                                   first_pool_chunks_iter_p->next_first_pool_free_chunk_cp);
+      next_p = MEM_CP_GET_POINTER (mem_pool_chunk_t,
+                                   first_pool_chunks_iter_p->u.u_pool_gc.stage1.next_first_cp);
 
-      if (first_pool_chunks_iter_p->free_chunks_num == MEM_POOL_CHUNKS_NUMBER)
+      if (first_pool_chunks_iter_p->u.u_pool_gc.stage1.free_chunks_num == MEM_POOL_CHUNKS_NUMBER)
       {
         mem_heap_free_block (first_pool_chunks_iter_p);
 
+#if 0
         mem_free_chunks_number -= MEM_POOL_CHUNKS_NUMBER;
+#endif
       }
       else
       {
         mem_pool_chunk_t *first_chunk_of_pool_p = (mem_pool_chunk_t *) first_pool_chunks_iter_p;
 
         mem_pool_chunk_t *non_first_free_chunk_of_the_pool_p = MEM_CP_GET_POINTER (mem_pool_chunk_t,
-                                                                                   first_pool_chunks_iter_p->free_chunks_of_the_pool_cp);
-        *(mem_pool_chunk_t **) first_chunk_of_pool_p = non_first_free_chunk_of_the_pool_p;
+                                                                                   first_pool_chunks_iter_p->u.u_pool_gc.stage1.free_list_cp);
+        first_chunk_of_pool_p->u.free.next_p = non_first_free_chunk_of_the_pool_p;
 
         for (mem_pool_chunk_t *pool_chunks_iter_p = first_chunk_of_pool_p;
              ;
-             pool_chunks_iter_p = *(mem_pool_chunk_t **) pool_chunks_iter_p)
+             pool_chunks_iter_p = pool_chunks_iter_p->u.free.next_p)
         {
           JERRY_ASSERT (pool_chunks_iter_p != NULL);
 
-          if (*(mem_pool_chunk_t **) pool_chunks_iter_p == NULL)
+          if (pool_chunks_iter_p->u.free.next_p == NULL)
           {
-            *(mem_pool_chunk_t **) pool_chunks_iter_p = mem_free_chunk_p;
+            pool_chunks_iter_p->u.free.next_p = mem_free_chunk_p;
             mem_free_chunk_p = first_chunk_of_pool_p;
 
             break;
@@ -345,7 +331,7 @@ mem_pools_remove_empty_pools (void)
        free_chunk_iter_p != NULL;
        free_chunk_iter_p = next_free_chunk_p)
   {
-    next_free_chunk_p = *(mem_pool_chunk_t **) free_chunk_iter_p;
+    next_free_chunk_p = free_chunk_iter_p->u.free.next_p;
 
     VALGRIND_NOACCESS_SPACE (free_chunk_iter_p, MEM_POOL_CHUNK_SIZE);
   }
@@ -360,7 +346,9 @@ mem_pools_alloc_longpath (void)
   mem_check_pools ();
 
   JERRY_ASSERT (mem_free_chunk_p == NULL);
+#if 0
   JERRY_ASSERT (mem_free_chunks_number == 0);
+#endif
 
   JERRY_ASSERT (MEM_POOL_SIZE <= mem_heap_get_chunked_block_data_size ());
   JERRY_ASSERT (MEM_POOL_CHUNKS_NUMBER >= 1);
@@ -368,7 +356,7 @@ mem_pools_alloc_longpath (void)
   mem_pool_state_t *pool_state_p = (mem_pool_state_t*) mem_heap_alloc_chunked_block (MEM_HEAP_ALLOC_LONG_TERM);
   JERRY_ASSERT (pool_state_p != NULL);
 
-  if (mem_free_chunks_number != 0)
+  if (mem_free_chunk_p != NULL)
   {
     /* some chunks could be freed due to GC called by heap allocator */
     mem_heap_free_block (pool_state_p);
@@ -388,7 +376,9 @@ mem_pools_alloc_longpath (void)
 
   // mem_pools = pool_state_p;
 
+#if 0
   mem_free_chunks_number += MEM_POOL_CHUNKS_NUMBER;
+#endif
   mem_free_chunk_p = first_pool_free_chunk_p;
 
   MEM_POOLS_STAT_ALLOC_POOL ();
@@ -402,56 +392,68 @@ mem_pools_alloc_longpath (void)
  * @return pointer to allocated chunk, if allocation was successful,
  *         or NULL - if not enough memory.
  */
-uint8_t*
+uint8_t* __attr_always_inline___
 mem_pools_alloc (void)
 {
-  if (mem_free_chunk_p == NULL)
+  do
   {
-    mem_pools_alloc_longpath ();
-  }
+    if (mem_free_chunk_p != NULL)
+    {
+      JERRY_ASSERT (mem_free_chunk_p != NULL);
 
-  JERRY_ASSERT (mem_free_chunks_number != 0 && mem_free_chunk_p != NULL);
+      // JERRY_ASSERT (mem_pools != NULL);
 
-  // JERRY_ASSERT (mem_pools != NULL);
+      /**
+       * And allocate chunk within it.
+       */
+#if 0
+      mem_free_chunks_number--;
+#endif
 
-  /**
-   * And allocate chunk within it.
-   */
-  mem_free_chunks_number--;
+      MEM_POOLS_STAT_ALLOC_CHUNK ();
 
-  MEM_POOLS_STAT_ALLOC_CHUNK ();
+      mem_pool_chunk_t *chunk_p = mem_free_chunk_p;
 
-  mem_pool_chunk_t *chunk_p = mem_free_chunk_p;
+      VALGRIND_DEFINED_SPACE (chunk_p, MEM_POOL_CHUNK_SIZE);
 
-  VALGRIND_DEFINED_SPACE (chunk_p, MEM_POOL_CHUNK_SIZE);
+      mem_free_chunk_p = chunk_p->u.free.next_p;
 
-  mem_free_chunk_p = *(mem_pool_chunk_t **) chunk_p;
+      VALGRIND_UNDEFINED_SPACE (chunk_p, MEM_POOL_CHUNK_SIZE);
 
-  VALGRIND_UNDEFINED_SPACE (chunk_p, MEM_POOL_CHUNK_SIZE);
+      uint8_t *allocated_chunk_p = (uint8_t *) chunk_p;
 
-  uint8_t *allocated_chunk_p = (uint8_t *) chunk_p;
+      mem_check_pools ();
 
-  mem_check_pools ();
+      return allocated_chunk_p;
+    }
+    else
+    {
+      mem_pools_alloc_longpath ();
 
-  return allocated_chunk_p;
+      /* the assertion guarantees that there will be no more than two iterations */
+      JERRY_ASSERT (mem_free_chunk_p != NULL);
+    }
+  } while (true);
 } /* mem_pools_alloc */
 
 /**
  * Free the chunk
  */
-void
+void __attr_always_inline___
 mem_pools_free (uint8_t *chunk_p) /**< pointer to the chunk */
 {
   mem_check_pools ();
 
   mem_pool_chunk_t *chunk_to_free_p = (mem_pool_chunk_t *) chunk_p;
 
-  *(mem_pool_chunk_t **) chunk_to_free_p = mem_free_chunk_p;
+  chunk_to_free_p->u.free.next_p = mem_free_chunk_p;
   mem_free_chunk_p = chunk_to_free_p;
 
   VALGRIND_NOACCESS_SPACE (chunk_to_free_p, MEM_POOL_CHUNK_SIZE);
 
+#if 0
   mem_free_chunks_number++;
+#endif
 
   MEM_POOLS_STAT_FREE_CHUNK ();
 
@@ -541,7 +543,7 @@ mem_check_pools (void)
   {
     VALGRIND_DEFINED_SPACE (chunk_iter_p, MEM_POOL_CHUNK_SIZE);
 
-    next_chunk_p = *(mem_pool_chunk_t **) chunk_iter_p;
+    next_chunk_p = chunk_iter_p->u.free.next_p;
 
     VALGRIND_UNDEFINED_SPACE (chunk_iter_p, MEM_POOL_CHUNK_SIZE);
 
@@ -598,7 +600,9 @@ static void
 mem_pools_stat_alloc_pool (void)
 {
   mem_pools_stats.pools_count++;
+#if 0
   mem_pools_stats.free_chunks = mem_free_chunks_number;
+#endif
 
   if (mem_pools_stats.pools_count > mem_pools_stats.peak_pools_count)
   {
@@ -619,7 +623,9 @@ mem_pools_stat_free_pool (void)
   JERRY_ASSERT (mem_pools_stats.pools_count > 0);
 
   mem_pools_stats.pools_count--;
+#if 0
   mem_pools_stats.free_chunks = mem_free_chunks_number;
+#endif
 } /* mem_pools_stat_free_pool */
 
 /**

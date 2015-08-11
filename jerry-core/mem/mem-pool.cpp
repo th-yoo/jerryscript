@@ -92,9 +92,6 @@ mem_pool_init (mem_pool_state_t *pool_p, /**< pool */
   JERRY_STATIC_ASSERT (sizeof (mem_pool_chunk_t) <= MEM_POOL_CHUNK_SIZE);
   JERRY_STATIC_ASSERT (sizeof (mem_pool_chunk_index_t) <= MEM_POOL_CHUNK_SIZE);
 
-  /* free pool chunks contain pointers */
-  JERRY_STATIC_ASSERT (sizeof (void *) <= sizeof (mem_pool_chunk_t));
-
   JERRY_ASSERT (MEM_POOL_SIZE == MEM_POOL_CHUNKS_NUMBER * MEM_POOL_CHUNK_SIZE);
   JERRY_ASSERT (MEM_POOL_CHUNKS_NUMBER <= (1u << CONFIG_MEM_POOL_MAX_CHUNKS_NUMBER_LOG));
 
@@ -115,13 +112,13 @@ mem_pool_init (mem_pool_state_t *pool_p, /**< pool */
 
     if (prev_free_chunk_p != NULL)
     {
-      *(mem_pool_chunk_t **) prev_free_chunk_p = chunk_p;
+      prev_free_chunk_p->u.free.next_p = chunk_p;
     }
 
     prev_free_chunk_p = chunk_p;
   }
 
-  *(mem_pool_chunk_t **) prev_free_chunk_p = NULL;
+  prev_free_chunk_p->u.free.next_p = NULL;
 
   for (mem_pool_chunk_index_t chunk_index = 0;
        chunk_index < MEM_POOL_CHUNKS_NUMBER;

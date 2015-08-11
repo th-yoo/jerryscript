@@ -51,7 +51,48 @@
  */
 typedef uint8_t mem_pool_chunk_index_t;
 
-typedef uint64_t mem_pool_chunk_t;
+/**
+ * Pool chunk
+ */
+typedef struct mem_pool_chunk_t
+{
+  union
+  {
+    /**
+     * Structure of allocated pool chunk
+     */
+    struct
+    {
+      uint64_t data; /**< data container in allocated chunk */
+    } allocated;
+
+    /**
+     * Structure of free pool chunk, while empty pool collector is not active
+     */
+    struct
+    {
+      mem_pool_chunk_t *next_p; /**< global list of free pool chunks */
+    } free;
+
+    /**
+     * Structure of free pool chunk, while empty pool collector is active
+     */
+    union
+    {
+      struct
+      {
+        mem_cpointer_t next_first_cp; /**< list of first free chunks of
+                                       *   pools with free first chunks */
+        mem_cpointer_t free_list_cp; /**< list of free chunks
+                                      *   in the pool containing this chunk */
+        uint16_t hint_magic_num;
+        mem_pool_chunk_index_t free_chunks_num; /**< number of free chunks
+                                                 *   in the pool containing this chunk */
+        uint8_t id;
+      } stage1;
+    } u_pool_gc;
+  } u;
+} mem_pool_chunk_t;
 
 /**
  * State of a memory pool
