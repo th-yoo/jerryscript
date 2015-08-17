@@ -75,16 +75,13 @@ test_heap_give_some_memory_back (mem_try_give_memory_back_severity_t severity)
   }
 } /* test_heap_give_some_memory_back */
 
-uint8_t test_native_heap[test_heap_size] __attribute__ ((aligned (JERRY_MAX (MEM_ALIGNMENT,
-                                                                             MEM_HEAP_CHUNK_SIZE))));
-
 int
 main (int __attr_unused___ argc,
       char __attr_unused___ **argv)
 {
   TEST_INIT ();
 
-  mem_heap_init (test_native_heap, sizeof (test_native_heap));
+  mem_heap_init ();
 
   mem_register_a_try_give_memory_back_callback (test_heap_give_some_memory_back);
 
