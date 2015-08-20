@@ -106,8 +106,9 @@ typedef enum : idx_t
   OPCODE_SCOPE_CODE_FLAGS_STRICT                       = (1u << 0), /**< code is strict mode code */
   OPCODE_SCOPE_CODE_FLAGS_NOT_REF_ARGUMENTS_IDENTIFIER = (1u << 1), /**< code doesn't reference
                                                                      *   'arguments' identifier */
-  OPCODE_SCOPE_CODE_FLAGS_NOT_REF_EVAL_IDENTIFIER      = (1u << 2)  /**< code doesn't reference
+  OPCODE_SCOPE_CODE_FLAGS_NOT_REF_EVAL_IDENTIFIER      = (1u << 2), /**< code doesn't reference
                                                                      *   'eval' identifier */
+  OPCODE_SCOPE_CODE_FLAGS_NOT_DECL_FUNCTIONS           = (1u << 3)  /**< code doesn't declare functions */
 } opcode_scope_code_flags_t;
 
 /**

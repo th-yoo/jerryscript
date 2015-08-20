@@ -148,6 +148,84 @@ next_temp_name (void)
   return next_reg;
 } /* next_temp_name */
 
+bool
+dumper_try_replace_var_with_reg (scopes_tree tree,
+                                 op_meta *var_decl_om_p)
+{
+  JERRY_ASSERT (var_decl_om_p->op.op_idx == VM_OP_VAR_DECL);
+  JERRY_ASSERT (var_decl_om_p->lit_id[0].packed_value != NOT_A_LITERAL.packed_value);
+  JERRY_ASSERT (var_decl_om_p->lit_id[1].packed_value == NOT_A_LITERAL.packed_value);
+  JERRY_ASSERT (var_decl_om_p->lit_id[2].packed_value == NOT_A_LITERAL.packed_value);
+
+  if (max_temp_name == OPCODE_REG_GENERAL_LAST)
+  {
+    /* not enough registers */
+    return false;
+  }
+  JERRY_ASSERT (max_temp_name < OPCODE_REG_GENERAL_LAST);
+
+  idx_t reg = ++max_temp_name;
+
+  lit_cpointer_t lit_cp = var_decl_om_p->lit_id[0];
+
+  for (vm_instr_counter_t instr_pos = 0;
+       instr_pos < tree->instrs_count;
+       instr_pos++)
+  {
+    op_meta om = scopes_tree_op_meta (tree, instr_pos);
+
+    vm_op_t opcode = (vm_op_t) om.op.op_idx;
+
+    int args_num = 0;
+
+#define VM_OP_0(opcode_name, opcode_name_uppercase) \
+    if (opcode == VM_OP_ ## opcode_name_uppercase) \
+    { \
+      args_num = 0; \
+    }
+#define VM_OP_1(opcode_name, opcode_name_uppercase, arg1, arg1_type) \
+    if (opcode == VM_OP_ ## opcode_name_uppercase) \
+    { \
+      args_num = 1; \
+    }
+#define VM_OP_2(opcode_name, opcode_name_uppercase, arg1, arg1_type, arg2, arg2_type) \
+    if (opcode == VM_OP_ ## opcode_name_uppercase) \
+    { \
+      args_num = 2; \
+    }
+#define VM_OP_3(opcode_name, opcode_name_uppercase, arg1, arg1_type, arg2, arg2_type, arg3, arg3_type) \
+    if (opcode == VM_OP_ ## opcode_name_uppercase) \
+    { \
+      args_num = 3; \
+    }
+
+#include "vm-opcodes.inc.h"
+
+    for (int i = 0; i < args_num; i++)
+    {
+      if (opcode == VM_OP_ASSIGNMENT
+          && i == 1
+          && om.op.data.assignment.type_value_right != VM_OP_ARG_TYPE_VARIABLE)
+      {
+        break;
+      }
+
+      if (om.lit_id[i].packed_value == lit_cp.packed_value)
+      {
+        om.lit_id[i] = NOT_A_LITERAL;
+
+        raw_instr *raw = (raw_instr *) (&om.op);
+        JERRY_ASSERT (raw->uids[i + 1] == LITERAL_TO_REWRITE);
+        raw->uids[i + 1] = reg;
+      }
+    }
+
+    scopes_tree_set_op_meta (tree, instr_pos, om);
+  }
+
+  return true;
+} /* dumper_try_replace_var_with_reg */
+
 static op_meta
 create_op_meta (vm_instr_t op, lit_cpointer_t lit_id1, lit_cpointer_t lit_id2, lit_cpointer_t lit_id3)
 {

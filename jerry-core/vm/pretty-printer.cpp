@@ -574,6 +574,11 @@ pp_op_meta (const vm_instr_t *instrs_p,
               printf ("[no 'eval'] ");
               scope_flags &= (idx_t) ~(OPCODE_SCOPE_CODE_FLAGS_NOT_REF_EVAL_IDENTIFIER);
             }
+            if (scope_flags & OPCODE_SCOPE_CODE_FLAGS_NOT_DECL_FUNCTIONS)
+            {
+              printf ("[no function declarations] ");
+              scope_flags &= (idx_t) ~(OPCODE_SCOPE_CODE_FLAGS_NOT_DECL_FUNCTIONS);
+            }
 
             JERRY_ASSERT (scope_flags == 0);
           }

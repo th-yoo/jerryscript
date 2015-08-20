@@ -47,9 +47,9 @@ typedef enum
 } jsp_eval_ret_store_t;
 
 static token tok;
-static bool inside_eval = false;
-static bool inside_function = false;
-static bool parser_show_instrs = false;
+bool inside_eval = false;
+bool inside_function = false;
+bool parser_show_instrs = false;
 
 enum
 {
@@ -384,6 +384,8 @@ parse_property_assignment (void)
     const operand name = parse_property_name ();
     jsp_early_error_add_prop_name (name, is_setter ? PROP_SET : PROP_GET);
 
+    scopes_tree_set_decl_functions (STACK_TOP (scopes));
+
     STACK_PUSH (scopes, scopes_tree_init (NULL));
     serializer_set_scope (STACK_TOP (scopes));
     scopes_tree_set_strict_mode (STACK_TOP (scopes), scopes_tree_strict_mode (STACK_HEAD (scopes, 2)));
@@ -656,6 +658,9 @@ parse_function_declaration (void)
   jsp_early_error_check_for_eval_and_arguments_in_strict_mode (name, is_strict_mode (), tok.loc);
 
   skip_newlines ();
+
+  scopes_tree_set_decl_functions (STACK_TOP (scopes));
+
   STACK_PUSH (scopes, scopes_tree_init (STACK_TOP (scopes)));
   serializer_set_scope (STACK_TOP (scopes));
   scopes_tree_set_strict_mode (STACK_TOP (scopes), scopes_tree_strict_mode (STACK_HEAD (scopes, 2)));
@@ -704,6 +709,8 @@ parse_function_expression (void)
   operand res;
 
   jsp_early_error_start_checking_of_vargs ();
+
+  scopes_tree_set_decl_functions (STACK_TOP (scopes));
 
   STACK_PUSH (scopes, scopes_tree_init (NULL));
   serializer_set_scope (STACK_TOP (scopes));
@@ -3001,7 +3008,49 @@ parse_source_element_list (bool is_global) /**< flag, indicating that we parsing
   {
     scope_flags = (opcode_scope_code_flags_t) (scope_flags | OPCODE_SCOPE_CODE_FLAGS_NOT_REF_EVAL_IDENTIFIER);
   }
+
+  if (!fe_scope_tree->decl_functions)
+  {
+    scope_flags = (opcode_scope_code_flags_t) (scope_flags | OPCODE_SCOPE_CODE_FLAGS_NOT_DECL_FUNCTIONS);
+  }
+
   rewrite_scope_code_flags (scope_code_flags_oc, scope_flags);
+
+  bool may_replace_vars_with_regs = (inside_function
+                                     && !inside_eval
+                                     && !fe_scope_tree->ref_eval
+                                     && !fe_scope_tree->ref_arguments
+                                     && !fe_scope_tree->decl_functions);
+
+
+  if (may_replace_vars_with_regs)
+  {
+    /* no subscopes, as no function declarations / eval etc. in the scope */
+    JERRY_ASSERT (fe_scope_tree->t.children_num == 0);
+
+    vm_instr_counter_t var_decl_pos = 0;
+
+    for (var_decl_pos = 0;
+         var_decl_pos < fe_scope_tree->var_decls_cout;
+         var_decl_pos++)
+    {
+      op_meta *om_p = (op_meta *) linked_list_element (fe_scope_tree->var_decls, var_decl_pos);
+
+      if (!dumper_try_replace_var_with_reg (fe_scope_tree, om_p))
+      {
+        break;
+      }
+    }
+
+    if (var_decl_pos == fe_scope_tree->var_decls_cout)
+    {
+      /* all local variables were replaced with registers */
+
+      linked_list_free (fe_scope_tree->var_decls);
+      fe_scope_tree->var_decls = linked_list_init (sizeof (op_meta));
+      fe_scope_tree->var_decls_cout = 0;
+    }
+  }
 
   rewrite_reg_var_decl ();
   dumper_finish_scope ();

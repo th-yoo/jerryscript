@@ -52,6 +52,7 @@ typedef struct
   bool strict_mode: 1; /**< flag, indicating that scope's code should be executed in strict mode */
   bool ref_arguments: 1; /**< flag, indicating that "arguments" variable is used inside the scope */
   bool ref_eval: 1; /**< flag, indicating that "eval" is used inside the scope */
+  bool decl_functions: 1; /**< flag, indicating that functions are declared inside the scope */
 } scopes_tree_int;
 
 typedef scopes_tree_int * scopes_tree;
@@ -71,6 +72,7 @@ vm_instr_counter_t scopes_tree_count_instructions (scopes_tree);
 vm_instr_t *scopes_tree_raw_data (scopes_tree, uint8_t *, size_t, lit_id_hash_table *);
 void scopes_tree_set_strict_mode (scopes_tree, bool);
 void scopes_tree_set_arguments_used (scopes_tree);
+void scopes_tree_set_decl_functions (scopes_tree);
 void scopes_tree_set_eval_used (scopes_tree);
 bool scopes_tree_strict_mode (scopes_tree);
 

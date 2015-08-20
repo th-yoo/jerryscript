@@ -89,7 +89,7 @@ vm_stack_add_frame (vm_stack_frame_t *frame_p, /**< frame to initialize */
 
   for (int32_t i = 0; i < regs_num; i++)
   {
-    regs_p[i] = ecma_make_simple_value (ECMA_SIMPLE_VALUE_EMPTY);
+    regs_p[i] = ecma_make_simple_value (ECMA_SIMPLE_VALUE_UNDEFINED);
   }
 } /* vm_stack_add_frame */
 

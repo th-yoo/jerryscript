@@ -743,6 +743,16 @@ scopes_tree_set_eval_used (scopes_tree tree) /**< scope */
   tree->ref_eval = true;
 } /* scopes_tree_set_eval_used */
 
+/**
+ * Set up a flag, indicating that functions are declared inside a scope
+ */
+void
+scopes_tree_set_decl_functions (scopes_tree tree) /**< scope */
+{
+  assert_tree (tree);
+  tree->decl_functions = true;
+} /* scopes_tree_set_decl_functions */
+
 bool
 scopes_tree_strict_mode (scopes_tree tree)
 {
@@ -778,6 +788,7 @@ scopes_tree_init (scopes_tree parent) /**< parent scope */
   tree->strict_mode = false;
   tree->ref_eval = false;
   tree->ref_arguments = false;
+  tree->decl_functions = false;
   tree->instrs = linked_list_init (sizeof (op_meta));
   tree->var_decls_cout = 0;
   tree->var_decls = linked_list_init (sizeof (op_meta));
