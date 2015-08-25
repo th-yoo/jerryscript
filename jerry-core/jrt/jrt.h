@@ -85,6 +85,10 @@ extern void __noreturn jerry_unreachable (const char *comment, const char *file,
                                           const uint32_t line);
 extern void __noreturn jerry_unimplemented (const char *comment, const char *file, const char *function,
                                             const uint32_t line);
+/**
+ * Mark for unreachable points and unimplemented cases
+ */
+#define jerry_ref_unused_variables(l, ...)
 
 #if !defined (JERRY_NDEBUG) || !defined (JERRY_DISABLE_HEAVY_DEBUG)
 #define JERRY_ASSERT(x) do { if (__builtin_expect (!(x), 0)) { \
@@ -122,11 +126,6 @@ extern void __noreturn jerry_unimplemented (const char *comment, const char *fil
 
 #define JERRY_ERROR_MSG(...) fprintf (stderr, __VA_ARGS__)
 #define JERRY_WARNING_MSG(...) JERRY_ERROR_MSG (__VA_ARGS__)
-
-/**
- * Mark for unreachable points and unimplemented cases
- */
-template<typename... values> extern void jerry_ref_unused_variables (const values & ... unused);
 
 #ifndef JERRY_NDEBUG
 #define JERRY_UNREACHABLE() \

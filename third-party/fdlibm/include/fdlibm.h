@@ -21,6 +21,11 @@
 #define __LITTLE_ENDIAN
 #endif
 
+// mixed-endian double
+#if defined(__arm__) && !defined(__VFP_FP__) && !defined(__MAVERICK__)
+#undef __LITTLE_ENDIAN
+#endif
+
 #ifdef __LITTLE_ENDIAN
 #define __HI(x) *(1+(int*)&x)
 #define __LO(x) *(int*)&x

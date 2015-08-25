@@ -169,7 +169,7 @@ typedef struct
 /**
  * Initializer for empty token
  */
-#define TOKEN_EMPTY_INITIALIZER {LIT_ITERATOR_POS_ZERO, TOK_EMPTY, 0}
+static const token TOKEN_EMPTY_INITIALIZER = {LIT_ITERATOR_POS_ZERO, TOK_EMPTY, 0};
 
 void lexer_init (const jerry_api_char_t *, size_t, bool);
 

@@ -84,45 +84,30 @@ typedef enum
   OPCODE_META_TYPE_END_FOR_IN /**< end of for-in statement */
 } opcode_meta_type;
 
-typedef enum : idx_t
-{
-  OPCODE_CALL_FLAGS__EMPTY                   = (0u),      /**< initializer for empty flag set */
-  OPCODE_CALL_FLAGS_HAVE_THIS_ARG            = (1u << 0), /**< flag, indicating that call is performed
-                                                           *   with 'this' argument specified */
-  OPCODE_CALL_FLAGS_DIRECT_CALL_TO_EVAL_FORM = (1u << 1)  /**< flag, indicating that call is performed
-                                                           *   in form 'eval (...)', i.e. through 'eval' string
-                                                           *   without object base (i.e. with lexical environment
-                                                           *   as base), so it can be a direct call to eval
-                                                           *   See also: ECMA-262 v5, 15.1.2.1.1
-                                                           */
-} opcode_call_flags_t;
+typedef idx_t opcode_call_flags_t;
+#define OPCODE_CALL_FLAGS__EMPTY                   (idx_t)(0u)
+#define OPCODE_CALL_FLAGS_HAVE_THIS_ARG            (idx_t)(1u << 0)
+#define OPCODE_CALL_FLAGS_DIRECT_CALL_TO_EVAL_FORM (idx_t)(1u << 1)
 
 /**
  * Flags indicating various properties of a scope's code
  */
-typedef enum : idx_t
-{
-  OPCODE_SCOPE_CODE_FLAGS__EMPTY                       = (0u),      /**< initializer for empty flag set */
-  OPCODE_SCOPE_CODE_FLAGS_STRICT                       = (1u << 0), /**< code is strict mode code */
-  OPCODE_SCOPE_CODE_FLAGS_NOT_REF_ARGUMENTS_IDENTIFIER = (1u << 1), /**< code doesn't reference
-                                                                     *   'arguments' identifier */
-  OPCODE_SCOPE_CODE_FLAGS_NOT_REF_EVAL_IDENTIFIER      = (1u << 2)  /**< code doesn't reference
-                                                                     *   'eval' identifier */
-} opcode_scope_code_flags_t;
+typedef idx_t opcode_scope_code_flags_t;
+#define  OPCODE_SCOPE_CODE_FLAGS__EMPTY                       (idx_t)(0u)
+#define  OPCODE_SCOPE_CODE_FLAGS_STRICT                       (idx_t)(1u << 0)
+#define  OPCODE_SCOPE_CODE_FLAGS_NOT_REF_ARGUMENTS_IDENTIFIER (idx_t)(1u << 1)
+#define  OPCODE_SCOPE_CODE_FLAGS_NOT_REF_EVAL_IDENTIFIER      (idx_t)(1u << 2)
 
 /**
  * Enumeration of registers (temp variables) ranges
  */
-typedef enum : idx_t
-{
-  OPCODE_REG_FIRST = 128, /** identifier of first special register */
-  OPCODE_REG_SPECIAL_EVAL_RET = OPCODE_REG_FIRST, /**< eval return value */
-  OPCODE_REG_SPECIAL_FOR_IN_PROPERTY_NAME, /**< variable, containing property name,
-                                            *   at start of for-in loop body */
-  OPCODE_REG_GENERAL_FIRST, /** identifier of first non-special register */
-  OPCODE_REG_GENERAL_LAST = 253, /** identifier of last non-special register */
-  OPCODE_REG_LAST = OPCODE_REG_GENERAL_FIRST /**< identifier of last register */
-} opcode_special_reg_t;
+typedef idx_t opcode_special_reg_t;
+#define  OPCODE_REG_FIRST (idx_t)(128)
+#define  OPCODE_REG_SPECIAL_EVAL_RET OPCODE_REG_FIRST
+#define  OPCODE_REG_SPECIAL_FOR_IN_PROPERTY_NAME (OPCODE_REG_SPECIAL_EVAL_RET+1)
+#define  OPCODE_REG_GENERAL_FIRST (OPCODE_REG_SPECIAL_FOR_IN_PROPERTY_NAME+1)
+#define  OPCODE_REG_GENERAL_LAST (idx_t)(253)
+#define  OPCODE_REG_LAST OPCODE_REG_GENERAL_FIRST
 
 /**
  * Types of byte-code instruction arguments, used for instruction description
@@ -198,25 +183,25 @@ typedef struct
 vm_instr_counter_t vm_calc_instr_counter_from_idx_idx (const idx_t oc_idx_1, const idx_t oc_idx_2);
 vm_instr_counter_t vm_read_instr_counter_from_meta (opcode_meta_type expected_type, vm_frame_ctx_t *int_data);
 
-typedef struct vm_instr_t
+typedef struct __attr_packed___ vm_instr_t
 {
   idx_t op_idx;
-  union
+  union __attr_packed___
   {
 #define VM_OP_1(opcode_name, opcode_name_uppercase, arg1, arg1_type) \
-    struct \
+    struct __attr_packed___ \
     { \
       idx_t arg1; \
     } opcode_name;
 
 #define VM_OP_2(opcode_name, opcode_name_uppercase, arg1, arg1_type, arg2, arg2_type) \
-    struct \
+    struct __attr_packed___ \
     { \
       idx_t arg1; \
       idx_t arg2; \
     } opcode_name;
 #define VM_OP_3(opcode_name, opcode_name_uppercase, arg1, arg1_type, arg2, arg2_type, arg3, arg3_type) \
-    struct \
+    struct __attr_packed___ \
     { \
       idx_t arg1; \
       idx_t arg2; \

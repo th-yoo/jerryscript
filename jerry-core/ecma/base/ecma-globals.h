@@ -324,7 +324,7 @@ typedef struct __attr_packed___ ecma_property_t
   mem_cpointer_t next_property_p : ECMA_POINTER_FIELD_WIDTH;
 
   /** Property's details (depending on Type) */
-  union
+  union __attr_packed___
   {
     /** Description of named data property */
     struct __attr_packed___ ecma_named_data_property_t
@@ -769,6 +769,7 @@ typedef struct
 
   /** Characters */
   lit_utf8_byte_t data[ sizeof (uint64_t) - sizeof (mem_cpointer_t) ];
+  enum { data_size = sizeof(lit_utf8_byte_t)*(sizeof(uint64_t)-sizeof(mem_cpointer_t)) };
 } ecma_collection_chunk_t;
 
 /**

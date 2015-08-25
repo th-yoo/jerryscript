@@ -41,7 +41,7 @@ main (int __attr_unused___ argc,
 
   const uint32_test_case_t test_cases_uint32[] =
   {
-#define TEST_CASE(num, uint32) { num, uint32 }
+#define TEST_CASE(num, uint32) { ecma_number_t(num), uint32_t(uint32) }
     TEST_CASE (1.0, 1),
     TEST_CASE (0.0, 0),
     TEST_CASE (ecma_number_negate (0.0), 0),
@@ -52,13 +52,13 @@ main (int __attr_unused___ argc,
     TEST_CASE (0.1, 0),
     TEST_CASE (-0.1, 0),
     TEST_CASE (1.1, 1),
-    TEST_CASE (-1.1, 4294967295),
-    TEST_CASE (4294967295, 4294967295),
-    TEST_CASE (-4294967295, 1),
-    TEST_CASE (4294967296, 0),
-    TEST_CASE (-4294967296, 0),
-    TEST_CASE (4294967297, 1),
-    TEST_CASE (-4294967297, 4294967295)
+    TEST_CASE (-1.1, 4294967295ll),
+    TEST_CASE (4294967295ll, 4294967295ll),
+    TEST_CASE (-4294967295ll, 1),
+    TEST_CASE (4294967296ll, 0),
+    TEST_CASE (-4294967296ll, 0),
+    TEST_CASE (4294967297ll, 1),
+    TEST_CASE (-4294967297ll, 4294967295ll)
 #undef TEST_CASE
   };
 
@@ -71,7 +71,7 @@ main (int __attr_unused___ argc,
 
   int32_test_case_t test_cases_int32[] =
   {
-#define TEST_CASE(num, int32) { num, int32 }
+#define TEST_CASE(num, int32) { ecma_number_t(num), int32_t(int32) }
     TEST_CASE (1.0, 1),
     TEST_CASE (0.0, 0),
     TEST_CASE (ecma_number_negate (0.0), 0),
@@ -83,18 +83,18 @@ main (int __attr_unused___ argc,
     TEST_CASE (-0.1, 0),
     TEST_CASE (1.1, 1),
     TEST_CASE (-1.1, -1),
-    TEST_CASE (4294967295, -1),
-    TEST_CASE (-4294967295, 1),
-    TEST_CASE (4294967296, 0),
-    TEST_CASE (-4294967296, 0),
-    TEST_CASE (4294967297, 1),
-    TEST_CASE (-4294967297, -1),
-    TEST_CASE (2147483648, -2147483648),
-    TEST_CASE (-2147483648, -2147483648),
-    TEST_CASE (2147483647, 2147483647),
-    TEST_CASE (-2147483647, -2147483647),
-    TEST_CASE (-2147483649, 2147483647),
-    TEST_CASE (2147483649, -2147483647)
+    TEST_CASE (4294967295ll, -1),
+    TEST_CASE (-4294967295ll, 1),
+    TEST_CASE (4294967296ll, 0),
+    TEST_CASE (-4294967296ll, 0),
+    TEST_CASE (4294967297ll, 1),
+    TEST_CASE (-4294967297ll, -1),
+    TEST_CASE (2147483648ll, -2147483648ll),
+    TEST_CASE (-2147483648ll, -2147483648ll),
+    TEST_CASE (2147483647ll, 2147483647ll),
+    TEST_CASE (-2147483647ll, -2147483647ll),
+    TEST_CASE (-2147483649ll, 2147483647ll),
+    TEST_CASE (2147483649ll, -2147483647ll)
 #undef TEST_CASE
   };
 

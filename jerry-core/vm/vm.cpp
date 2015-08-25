@@ -33,13 +33,13 @@ vm_frame_ctx_t *vm_top_context_p = NULL;
 static const opfunc __opfuncs[VM_OP__COUNT] =
 {
 #define VM_OP_0(opcode_name, opcode_name_uppercase) \
-  [ VM_OP_ ## opcode_name_uppercase ] = opfunc_ ## opcode_name,
+  opfunc_ ## opcode_name,
 #define VM_OP_1(opcode_name, opcode_name_uppercase, arg1, arg1_type) \
-  [ VM_OP_ ## opcode_name_uppercase ] = opfunc_ ## opcode_name,
+  opfunc_ ## opcode_name,
 #define VM_OP_2(opcode_name, opcode_name_uppercase, arg1, arg1_type, arg2, arg2_type) \
-  [ VM_OP_ ## opcode_name_uppercase ] = opfunc_ ## opcode_name,
+  opfunc_ ## opcode_name,
 #define VM_OP_3(opcode_name, opcode_name_uppercase, arg1, arg1_type, arg2, arg2_type, arg3, arg3_type) \
-  [ VM_OP_ ## opcode_name_uppercase ] = opfunc_ ## opcode_name,
+  opfunc_ ## opcode_name,
 
 #include "vm-opcodes.inc.h"
 };

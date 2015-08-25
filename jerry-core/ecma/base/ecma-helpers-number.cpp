@@ -113,6 +113,18 @@ const ecma_number_t ecma_number_relative_eps = 1.0e-10f;
 #elif CONFIG_ECMA_NUMBER_TYPE == CONFIG_ECMA_NUMBER_FLOAT64
 JERRY_STATIC_ASSERT (sizeof (ecma_number_t) == sizeof (uint64_t));
 
+// mixed-endian double
+#if defined(__arm__) && !defined(__VFP_FP__) && !defined(__MAVERICK__)
+#define adjust_order(x) do { \
+	uint64_t* p = (uint64_t*)(void*)&(x); \
+	uint32_t temp = *(((uint32_t*)(void*)&(x))+1); \
+	(*p) <<= 32; \
+	(*p) += temp; \
+     } while (0)
+#else
+#define adjust_order(x)
+#endif
+
 /**
  * Packing sign, fraction and biased exponent to ecma-number
  *
@@ -127,7 +139,7 @@ ecma_number_pack (bool sign, /**< sign */
   const uint32_t biased_exp_pos = fraction_pos + ECMA_NUMBER_FRACTION_WIDTH;
   const uint32_t sign_pos = biased_exp_pos + ECMA_NUMBER_BIASED_EXP_WIDTH;
 
-  uint64_t packed_value = (((sign ? 1ull : 0ull) << sign_pos) |
+  volatile uint64_t packed_value = (((sign ? 1ull : 0ull) << sign_pos) |
                            (((uint64_t) biased_exp) << biased_exp_pos) |
                            (fraction << fraction_pos));
 
@@ -140,6 +152,7 @@ ecma_number_pack (bool sign, /**< sign */
     ecma_number_t float_value;
   } u;
 
+  adjust_order(packed_value);
   u.u64_value = packed_value;
 
   return u.float_value;
@@ -165,6 +178,7 @@ ecma_number_unpack (ecma_number_t num, /**< ecma-number */
   } u;
   u.float_value = num;
 
+  adjust_order(u.u64_value);
   uint64_t packed_value = u.u64_value;
 
   if (sign_p != NULL)

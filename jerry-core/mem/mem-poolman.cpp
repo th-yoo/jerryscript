@@ -178,7 +178,7 @@ mem_pools_collect_empty (void)
   /*
    * Hint magic number in header of pools with free first chunks
    */
-  const uint16_t hint_magic_num_value = 0x7e89;
+  static const uint16_t hint_magic_num_value = 0x7e89;
 
   /*
    * At first pass collect pointers to those of free chunks that are first at their pools
@@ -188,7 +188,7 @@ mem_pools_collect_empty (void)
   /*
    * Number of collection-time pool lists
    */
-  constexpr uint32_t pool_lists_number = 8;
+  static const uint32_t pool_lists_number = 8;
 
   /*
    * Collection-time pool lists

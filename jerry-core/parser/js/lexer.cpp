@@ -952,7 +952,7 @@ lexer_parse_number (void)
       JERRY_ASSERT (!ecma_number_is_nan (res));
 
       known_token = convert_seen_num_to_token (res);
-      is_token_parse_in_progress = NULL;
+      is_token_parse_in_progress = false;
 
       return known_token;
     }
@@ -990,13 +990,13 @@ lexer_parse_number (void)
   if (fp_res >= 0 && fp_res <= 255 && (uint8_t) fp_res == fp_res)
   {
     known_token = create_token (TOK_SMALL_INT, (uint8_t) fp_res);
-    is_token_parse_in_progress = NULL;
+    is_token_parse_in_progress = false;
     return known_token;
   }
   else
   {
     known_token = convert_seen_num_to_token (fp_res);
-    is_token_parse_in_progress = NULL;
+    is_token_parse_in_progress = false;
     return known_token;
   }
 } /* lexer_parse_number */

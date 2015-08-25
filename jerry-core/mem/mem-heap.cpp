@@ -71,11 +71,18 @@ typedef enum
  *
  * @see mem_init_block_header
  */
-typedef enum : uint8_t
-{
-  ONE_CHUNKED, /**< one-chunked block (See also: mem_heap_alloc_chunked_block) */
-  GENERAL      /**< general (may be multi-chunk) block */
-} mem_block_length_type_t;
+struct mem_block_length_type_t {
+	mem_block_length_type_t(uint8_t v) : val(v) {}
+	operator uint8_t& () { return val; }
+	uint8_t* operator& () { return &val; }
+
+        /// one-chunked block (See also: mem_heap_alloc_chunked_block)
+	const static uint8_t ONE_CHUNKED = 0; 
+        /// general (may be multi-chunk) block
+	const static uint8_t GENERAL = 1;
+private:
+	uint8_t val;
+};
 
 /**
  * Linked list direction descriptors

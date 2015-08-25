@@ -24,17 +24,21 @@ project (Jerry CXX C ASM)
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   if(${GNU_CXX_VERSION} VERSION_LESS 4.7.0)
-   message(FATAL_ERROR "g++ compiler version 4.7.0 or higher required")
+	  # ours is 4.2.1
+	  #message(FATAL_ERROR "g++ compiler version 4.7.0 or higher required")
   endif()
  endif()
 
 # Use gcc-ar and gcc-ranlib to support LTO
- get_filename_component(PATH_TO_GCC ${CMAKE_C_COMPILER} REALPATH)
+ #get_filename_component(PATH_TO_GCC ${CMAKE_C_COMPILER} REALPATH)
+ get_filename_component(PATH_TO_GCC ${CMAKE_C_COMPILER} ABSOLUTE)
  get_filename_component(DIRECTORY_GCC ${PATH_TO_GCC} DIRECTORY)
  get_filename_component(FILE_NAME_GCC ${PATH_TO_GCC} NAME)
- string(REPLACE "gcc" "gcc-ar" CMAKE_AR ${FILE_NAME_GCC})
- string(REPLACE "gcc" "gcc-ranlib" CMAKE_RANLIB ${FILE_NAME_GCC})
+ #string(REPLACE "gcc" "gcc-ar" CMAKE_AR ${FILE_NAME_GCC})
+ #string(REPLACE "gcc" "gcc-ranlib" CMAKE_RANLIB ${FILE_NAME_GCC})
+ get_filename_component(CMAKE_AR ${CMAKE_AR} NAME)
  set(CMAKE_AR ${DIRECTORY_GCC}/${CMAKE_AR})
+ get_filename_component(CMAKE_RANLIB ${CMAKE_RANLIB} NAME)
  set(CMAKE_RANLIB ${DIRECTORY_GCC}/${CMAKE_RANLIB})
 
 # Imported and third-party targets prefix
@@ -42,10 +46,12 @@ project (Jerry CXX C ASM)
  set(SUFFIX_THIRD_PARTY_LIB .third_party.lib)
 
 # Static checkers
- include(build/static-checkers/add_cppcheck_for_target.cmake)
+# include(build/static-checkers/add_cppcheck_for_target.cmake)
+function(add_cppcheck_target dummy)
+endfunction()
 
- add_custom_target(static_check)
- add_dependencies(static_check cppcheck)
+# add_custom_target(static_check)
+# add_dependencies(static_check cppcheck)
 
 # Architecture-specific compile/link flags
  foreach(FLAG ${FLAGS_COMMON_ARCH})
@@ -60,7 +66,7 @@ project (Jerry CXX C ASM)
 
 # Determining platform and defining options
  option(ENABLE_VALGRIND "Enable valgrind helpers in memory allocators" OFF)
- option(ENABLE_LTO      "Enable LTO build" ON)
+ option(ENABLE_LTO      "Enable LTO build" OFF)
  option(ENABLE_LOG      "Enable LOG build" OFF)
 
  set(PLATFORM "${CMAKE_SYSTEM_NAME}")
@@ -69,6 +75,7 @@ project (Jerry CXX C ASM)
  if("${PLATFORM}" STREQUAL "LINUX")
   set(PLATFORM_EXT "LINUX")
   set(EXTERNAL_BUILD FALSE)
+  set(USE_COMPILER_DEFAULT_LIBC "YES")
 
   option(STRIP_RELEASE_BINARY "Strip symbols from release binaries" ON)
  elseif("${PLATFORM}" STREQUAL "MCU")
@@ -210,20 +217,26 @@ project (Jerry CXX C ASM)
   set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -fno-stack-protector")
 
  # Debug information
-  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -g -gdwarf-4")
+ #set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -g -gdwarf-4")
+  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -g")
 
  # Warnings
-  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wall -Wextra -pedantic -Wlogical-op")
+  #set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wall -Wextra -pedantic -Wlogical-op")
+  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wall -Wextra")
   set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wformat-nonliteral -Winit-self -Wno-stack-protector")
-  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wconversion -Wsign-conversion -Wformat-security")
-  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wmissing-declarations -Wno-attributes")
-  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Werror -Wfatal-errors")
+  #set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wconversion -Wsign-conversion -Wformat-security")
+  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wconversion  -Wformat-security")
+  #set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wmissing-declarations -Wno-attributes")
+  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wno-attributes")
+  #set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Werror -Wfatal-errors")
+  set(COMPILE_FLAGS_JERRY "${COMPILE_FLAGS_JERRY} -Wfatal-errors")
 
  # Static build
   set(LINKER_FLAGS_STATIC "-static")
 
  # C++
-  set(CXX_FLAGS_JERRY "-std=c++11 -fno-exceptions -fno-rtti")
+  #set(CXX_FLAGS_JERRY "-std=c++11 -fno-exceptions -fno-rtti")
+  set(CXX_FLAGS_JERRY "-std=c++98 -fno-exceptions -fno-rtti")
 
   # Turn off implicit template instantiation
    set(CXX_FLAGS_JERRY "${CXX_FLAGS_JERRY} -fno-implicit-templates -fno-implicit-inline-templates")

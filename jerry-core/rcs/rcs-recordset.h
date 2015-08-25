@@ -98,13 +98,13 @@ public:
      *      the pointer can represent addresses aligned by RCS_DYN_STORAGE_ALIGNMENT,
      *      while mem_cpointer_t can only represent addressed aligned by MEM_ALIGNMENT.
      */
-    struct cpointer_t
+    struct __attr_packed___ cpointer_t
     {
       static const uint32_t bit_field_width = MEM_CP_WIDTH + MEM_ALIGNMENT_LOG - RCS_DYN_STORAGE_ALIGNMENT_LOG;
 
-      union
+      union __attr_packed___
       {
-        struct
+        struct __attr_packed___
         {
           mem_cpointer_t base_cp : MEM_CP_WIDTH; /**< pointer to base of addressed area */
 #if MEM_ALIGNMENT_LOG > RCS_DYN_STORAGE_ALIGNMENT_LOG
@@ -185,15 +185,12 @@ protected:
    *
    * @return pointer to the new record
    */
-  template<
-    typename T, /**< type of record structure */
-    typename ... SizeArgs> /**< type of arguments of T::size */
-  T *alloc_record (record_t::type_t type, /**< record's type identifier */
-                   SizeArgs ... size_args) /**< arguments of T::size */
+  template<typename T, typename SizeArgs>
+  T *alloc_record (record_t::type_t type, SizeArgs size_args)
   {
     JERRY_ASSERT (type >= _first_type_id);
 
-    size_t size = T::size (size_args...);
+    size_t size = T::size (size_args);
 
     record_t *prev_rec_p;
     T *rec_p = static_cast<T*> (alloc_space_for_record (size, &prev_rec_p));
@@ -205,7 +202,26 @@ protected:
     assert_state_is_correct ();
 
     return rec_p;
-  } /* alloc_record */
+  }
+
+  template<typename T>
+  T *alloc_record (record_t::type_t type)
+  {
+    JERRY_ASSERT (type >= _first_type_id);
+
+    size_t size = T::size ();
+
+    record_t *prev_rec_p;
+    T *rec_p = static_cast<T*> (alloc_space_for_record (size, &prev_rec_p));
+
+    rec_p->set_type (type);
+    rec_p->set_size (size);
+    rec_p->set_prev (prev_rec_p);
+
+    assert_state_is_correct ();
+
+    return rec_p;
+  }
 
   record_t *alloc_space_for_record (size_t bytes, record_t **out_prev_rec_p);
   void free_record (record_t *record_p);

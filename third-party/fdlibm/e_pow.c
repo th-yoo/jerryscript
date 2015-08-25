@@ -1,6 +1,6 @@
 
 #ifndef lint
-static  char sccsid[] = "@(#)e_pow.c 1.5 04/04/22 SMI"; 
+//static  char sccsid[] = "@(#)e_pow.c 1.5 04/04/22 SMI"; 
 #endif
 
 /*
@@ -135,7 +135,7 @@ ivln2_l  =  1.92596299112661746887e-08; /* 0x3E54AE0B, 0xF85DDF44 =1/ln2 tail*/
 		k = (iy>>20)-0x3ff;	   /* exponent */
 		if(k>20) {
 		    j = ly>>(52-k);
-		    if((j<<(52-k))==ly) yisint = 2-(j&1);
+		    if((unsigned)(j<<(52-k))==ly) yisint = 2-(j&1);
 		} else if(ly==0) {
 		    j = iy>>(20-k);
 		    if((j<<(20-k))==iy) yisint = 2-(j&1);
